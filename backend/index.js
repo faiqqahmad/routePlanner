@@ -2,6 +2,8 @@ import express from 'express'
 import http from 'http'
 import axios from 'axios'
 import cors from 'cors'
+import dotenv from 'dotenv'
+dotenv.config()
 
 const app = express()
 app.use(
@@ -12,9 +14,6 @@ app.use(
 app.use(express.json())
 const port = 4000
 
-// let addresses = ['Invalidenstr 117 Berlin']
-let coords = []
-
 //for osrm api calls
 const osrmBaseUrl = 'http://localhost:3000'
 const route = '/route/v1'
@@ -24,20 +23,26 @@ const exCoords = '7.436828612,43.739228054975506;7.417058944702148,43.7328404624
 
 //for here api calls
 const hereBaseUrl = 'https://geocode.search.hereapi.com/v1/geocode?q='
-const addresses = ['Invalidenstr 117 Berlin', 'Invalidenstr 117 Berlin', 'Invalidenstr 117 Berlin']
-const key = '&apiKey=QdcDZ9iT-yzZyX9V1sKRtQu7J7WQHvMIIaTbJrcA-tg'
+const key = `&apiKey=${process.env.HERE_API_KEY}`
 
 
 
 async function addressToCoord(addy){
-    let hereResponse = null
     // console.log(hereBaseUrl + addy.replace(/\s+/g, '+') + key)
-    hereResponse = await axios.get(hereBaseUrl + addy.replace(/\s+/g, '+') + key)
+    const hereResponse = await axios.get(hereBaseUrl + addy.replace(/\s+/g, '+') + key)
     return hereResponse.data
 }
 
-app.post('/input', (req,res) => {
-    console.log(req.body)
+app.post('/input', async (req,res) => {
+    const geocodedObjects = await Promise.allSettled(req.body.locations.map(addy => addressToCoord(addy)))
+    const coordsRaw = geocodedObjects.map(resp => resp.value.items[0].position)
+    const coordsStrs = coordsRaw.map( (object) => `${object.lat},${object.lng};`)
+    const comb_coord_str = coordsStrs.join("").slice(0,-1)
+
+    const osrmResp = await axios.get(osrmBaseUrl + route + driving + comb_coord_str + suffix)
+    
+    console.log(osrmResp.data.routes[0].distance)
+
 })
 
 

@@ -15,7 +15,7 @@ function App() {
 
   const submit = async () => {
     axios.post('http://localhost:4000/input', {
-      locations: text.split(";")
+      locations: text.split(";").map(addy => addy.trim()).filter(addy => addy != "")
     })
   }
 
